@@ -13,11 +13,16 @@ void append_result_csv(const char *path,
                     int processes,
                     double time_seconds,
                     double speedup,
-                    double efficiency);
+                    double efficiency,
+                    double err);
 
 int main(int argc, char** argv) {
+
     // mpicc task1.c -o task1
     // mpiexec -n 4 ./task1 10000000
+
+    // for p in 2 4 8; do   for n in 1000000 5000000 10000000 50000000 100000000; do     echo "Run: P=$p, N=$n";     mpiexec -np "$p" ./task1 "$n";   done; done
+
     MPI_Init(&argc, &argv);
     
     int rank, size;
@@ -26,7 +31,7 @@ int main(int argc, char** argv) {
     
     if (argc != 2) {
         if (rank == 0) {
-            printf("Использование: mpiexec -n <количество процессов> <название файла> <количество_точек>\n");
+            printf("Использование: mpiexec -n <количество процессов> ./task1 <количество точек>\n");
         }
         MPI_Finalize();
         return 1;
@@ -44,7 +49,7 @@ int main(int argc, char** argv) {
     
     MPI_Barrier(MPI_COMM_WORLD);
     
-    // Последовательная версия (только процесс 0)
+    // Последовательная версия
     double seq_time = 0.0, seq_pi = 0.0;
     if (rank == 0) {
         printf("=== Последовательная версия ===\n");
@@ -76,9 +81,11 @@ int main(int argc, char** argv) {
     MPI_Reduce(&local_time, &parallel_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     
     double speedup = 1.0, efficiency = 1.0;
+    double err = 0.0;
     if (rank == 0) {
+        err = fabs(parallel_pi - M_PI);
         printf("Результат: %.15f\n", parallel_pi);
-        printf("Погрешность: %.15f\n", fabs(parallel_pi - M_PI));
+        printf("Погрешность: %.15f\n", err);
         printf("Время выполнения: %.6f секунд\n", parallel_time);
         
         if (size > 1) {
@@ -96,10 +103,10 @@ int main(int argc, char** argv) {
     
     if (rank == 0) {
         printf("=== Сводка результатов ===\n");
-        printf("Количество точек,Количество процессов,Время,Ускорение,Эффективность\n");
-        printf("%lld,%d,%.6f,%.6f,%.6f\n", num_points, size, parallel_time, speedup, efficiency);
+        printf("Количество точек,Количество процессов,Время,Ускорение,Эффективность,Погрешность\n");
+        printf("%lld,%d,%.6f,%.6f,%.6f,%.6f\n", num_points, size, parallel_time, speedup, efficiency, err);
 
-        append_result_csv(out_path, num_points, size, parallel_time, speedup, efficiency);
+        append_result_csv(out_path, num_points, size, parallel_time, speedup, efficiency, err);
         printf("\nРезультаты добавлены в файл: %s\n", out_path);
     }
     
@@ -169,7 +176,8 @@ void append_result_csv(const char *path,
                     int processes,
                     double time_seconds,
                     double speedup,
-                    double efficiency)
+                    double efficiency,
+                    double err)
 {
     FILE *f = fopen(path, "ab+");
     if (!f) return;
@@ -178,15 +186,15 @@ void append_result_csv(const char *path,
 
     if (lines == 0) {
         const char *header =
-            "Эксперимент,Количество точек,Количество процессов,Время,Ускорение,Эффективность\n";
+            "Эксперимент,Количество точек,Количество процессов,Время,Ускорение,Эффективность,Погрешность\n";
         fwrite(header, 1, strlen(header), f);
         lines = 1;
     }
 
         int experiment_id = (int)lines;
 
-    fprintf(f, "%d,%lld,%d,%.6f,%.6f,%.6f\n",
-            experiment_id, points, processes, time_seconds, speedup, efficiency);
+    fprintf(f, "%d,%lld,%d,%.6f,%.6f,%.6f,%.6f\n",
+            experiment_id, points, processes, time_seconds, speedup, efficiency, err);
             
     fclose(f);
 }
