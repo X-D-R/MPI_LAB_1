@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
             done
         done
     
-    for p in 4; do
+    for p in 4 9; do
         for N in 1024 2048 4096 8192; do
             echo "Запуск для алгоритма block, P=$p, N=$N"
             mpiexec -np "$p" ./task2 "$N" block
