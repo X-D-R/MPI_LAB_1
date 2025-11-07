@@ -78,11 +78,16 @@ static void append_result_csv(const char *path,
 }
 
 int main(int argc, char *argv[]) {
+
+    // mpicc -O3 task3.c -o task3 -lm
+
+    // for p in 16; do     for N in 128 256 512 1024; do         echo "Запуск для алгоритма cannon, P=$p, N=$N";         mpirun --oversubscribe -np "$p" ./task3 "$N";     done; done
+
     int rank, size;
     int n = 512; // Размер матрицы по умолчанию
     int q;
     double start_time, end_time, parallel_time, sequential_time;
-    const char *out_path = "cannon_results.csv";
+    const char *out_path = "results.csv";
     
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
